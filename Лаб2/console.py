@@ -10,6 +10,9 @@ df = sns.load_dataset('mpg')
 
 # 2. Количество строк и столбцов
 print(f"Строки: {df.shape[0]}, Столбцы: {df.shape[1]}")
+pd.set_option('display.max_columns', None)
+pd.set_option('display.expand_frame_repr', False)
+pd.set_option('display.float_format', '{:.3f}'.format)
 
 # 3. Разведочный анализ
 # a. Числовые переменные
