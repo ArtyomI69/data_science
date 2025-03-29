@@ -1,78 +1,21 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.linear_model import LinearRegression, Lasso, ElasticNet
+from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from scipy.stats import ttest_ind, pearsonr
 
-# Реализация собственного KNN Regressor
-class CustomKNNRegressor:
-    def __init__(self, n_neighbors=5):
-        self.n_neighbors = n_neighbors
-        self.X_train = None
-        self.y_train = None
-
-    def fit(self, X, y):
-        self.X_train = X
-        self.y_train = np.array(y)
-
-    def predict(self, X):
-        y_pred = []
-        for x in X:
-            distances = np.linalg.norm(self.X_train - x, axis=1)
-            neighbors_idx = np.argsort(distances)[:self.n_neighbors]
-            y_pred.append(np.mean(self.y_train[neighbors_idx]))
-        return np.array(y_pred)
-
-
-# Реализация собственной линейной регрессии
-class CustomLinearRegression:
-    def __init__(self):
-        self.weights = None
-        self.bias = None
-
-    def fit(self, X, y):
-        X_b = np.c_[np.ones((X.shape[0], 1)), X]
-        theta_best = np.linalg.pinv(X_b.T.dot(X_b)).dot(X_b.T).dot(y)
-        self.bias = theta_best[0]
-        self.weights = theta_best[1:]
-
-    def predict(self, X):
-        return X.dot(self.weights) + self.bias
-
-
-# Реализация собственного LASSO Regressor
-class CustomLassoRegression:
-    def __init__(self, alpha=0.1, iterations=1000, learning_rate=0.01):
-        self.alpha = alpha
-        self.iterations = iterations
-        self.learning_rate = learning_rate
-        self.weights = None
-        self.bias = None
-
-    def fit(self, X, y):
-        m, n = X.shape
-        self.weights = np.zeros(n)
-        self.bias = 0
-
-        for _ in range(self.iterations):
-            y_pred = X.dot(self.weights) + self.bias
-            dw = (-2 / m) * X.T.dot(y - y_pred) + self.alpha * np.sign(self.weights)
-            db = (-2 / m) * np.sum(y - y_pred)
-            self.weights -= self.learning_rate * dw
-            self.bias -= self.learning_rate * db
-
-    def predict(self, X):
-        return X.dot(self.weights) + self.bias
-
-
 # 1. Загрузка данных
 print("\n================= 1. Загрузка данных =================")
-df = pd.read_csv("./move.csv")
-df = df.drop(columns=['Unnamed: 0'])
+df = pd.read_csv(
+    "./data/move.csv")
+pd.set_option('display.max_columns', None)
+pd.set_option('display.expand_frame_repr', False)
+pd.set_option('display.float_format', '{:.3f}'.format)
 print(df.info())
 print(df.head())
 
@@ -86,6 +29,15 @@ num_cols = df.select_dtypes(include=['int64', 'float64']).columns
 
 df[num_cols] = df[num_cols].fillna(df[num_cols].median())
 print("Пропущенные значения обработаны: числовые - медианой.")
+
+# 3.1. Анализ категориальных признаков
+print("\n================= 3.1. Анализ категориальных признаков =================")
+categorical_cols = ['metro', 'way', 'provider']
+
+# Вывод количества уникальных значений
+for col in categorical_cols:
+    print(f"{col}: {df[col].nunique()} уникальных значений")
+    print(df[col].value_counts(), "\n")
 
 # 4. Удаление выбросов
 print("\n================= 4. Удаление выбросов =================")
@@ -123,6 +75,13 @@ else:
 
 # 6. Разделение на train/test
 print("\n================= 6. Разделение данных =================")
+# Исключение категориальных переменных
+df = df.drop(columns=["way", "metro", "provider", "Unnamed: 0"])  # Убираем ненужные столбцы
+
+# Заполнение пропущенных значений медианой
+df.fillna(df.median(), inplace=True)
+
+
 target_column = 'price'  # Целевая переменная
 X = df.drop(columns=[target_column])
 y = df[target_column]
@@ -131,36 +90,15 @@ print("Данные разделены: train и test.")
 
 # 7. Нормализация данных
 print("\n================= 7. Нормализация данных =================")
-# Выделяем числовые и категориальные признаки
-num_features = ['fee_percent', 'storey', 'minutes', 'storeys', 'living_area', 'kitchen_area', 'total_area']
-cat_features = ['metro', 'way', 'provider']
-
-# Применяем One-Hot Encoding к категориальным признакам
-encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
-X_cat_train = encoder.fit_transform(X_train[cat_features])
-X_cat_test = encoder.transform(X_test[cat_features])
-
-# Масштабируем числовые признаки
 scaler = StandardScaler()
-X_num_train = scaler.fit_transform(X_train[num_features])
-X_num_test = scaler.transform(X_test[num_features])
-
-# Объединяем обработанные признаки
-X_train = np.hstack([X_num_train, X_cat_train])
-X_test = np.hstack([X_num_test, X_cat_test])
-
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 print("Нормализация выполнена.")
 
 # 8. Обучение моделей
 print("\n================= 8. Обучение моделей =================")
 models = {
-    "Custom Linear Regression": CustomLinearRegression(),
-    "Linear Regression": LinearRegression(),
-    "Custom KNN Regressor": CustomKNNRegressor(n_neighbors=5),
-    "KNN Regressor": KNeighborsRegressor(n_neighbors=5),
-    "Custom LASSO Regressor": CustomLassoRegression(alpha=0.1),
-    "Lasso": Lasso(alpha=0.1),
-    "ElasticNet": ElasticNet(alpha=0.1, l1_ratio=0.5)
+    "KNN Regressor": KNeighborsRegressor(n_neighbors=5)
 }
 
 results = {}
@@ -193,7 +131,3 @@ for name, model in models.items():
     plt.title(f"{name} - Апроксимирующая кривая и данные")
     plt.legend()
     plt.show()
-
-# 9. Выбор лучшей модели
-best_model = max(results, key=lambda x: results[x][-1])
-print(f"Лучшая модель: {best_model}")
