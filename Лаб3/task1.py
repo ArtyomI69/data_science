@@ -1,41 +1,12 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from matplotlib.colors import ListedColormap
-from collections import Counter
-
-# Собственная реализация алгоритма KNN
-class KNN:
-    def __init__(self, k=5):
-        """ Создаём объект модели с заданным количеством соседей. """
-        self.k = k
-
-    def fit(self, X_train, y_train):
-        """ Сохраняем обучающий набор данных. """
-        self.X_train = np.array(X_train)
-        self.y_train = np.array(y_train)
-
-    def predict(self, X_test):
-        """ Определяем классы для всех объектов из тестового набора. """
-        return np.array([self._predict(x) for x in np.array(X_test)])
-
-    def _predict(self, x):
-        """ Классифицируем один объект x. """
-        distances = [self._euclidean_distance(x, x_train) for x_train in self.X_train]
-        k_indices = np.argsort(distances)[:self.k]
-        k_nearest_labels = [self.y_train[i] for i in k_indices]
-        return Counter(k_nearest_labels).most_common(1)[0][0]
-
-    def _euclidean_distance(self, x1, x2):
-        """ Вычисляем евклидово расстояние между двумя точками. """
-        return np.sqrt(np.sum((x1 - x2) ** 2))
 
 # Загрузка данных
 print("\n Загружаем данные ")
@@ -101,10 +72,8 @@ print("Данные успешно разделены.")
 
 print("\n  Обучение моделей ")
 models = {
-    "KNN (самописный)": KNN(k=5),
-    "KNN (из библиотеки)": KNeighborsClassifier(n_neighbors=5),
+    "KNN": KNeighborsClassifier(n_neighbors=7),
     "Логистическая регрессия": LogisticRegression(),
-    "SVM": SVC(probability=True)
 }
 
 results = {}
@@ -156,6 +125,18 @@ def plot_decision_boundary(model, X, y, feature_names):
     except Exception as e:
         print(f"Ошибка при построении границ классов: {e}")
 
-knn_selected = KNeighborsClassifier(n_neighbors=5)
+knn_selected = KNeighborsClassifier(n_neighbors=7)
 knn_selected.fit(X_selected_scaled, y_selected)
 plot_decision_boundary(knn_selected, X_selected_scaled, y_selected, selected_features)
+
+# KNN лучшая модель по параметру n
+# Practice1: Проект Streamlit (в telegram есть пример). Берём пример и переделываем под лабу3.
+# Practice2: Отделяем Streamlit от FastApi
+
+# 1 KNN -> Accuracy: 0.6386, Precision: 0.6176, Recall: 0.5526, F1-score: 0.5833, AUC: 0.6318713450292399
+# 2 KNN -> Accuracy: 0.6627, Precision: 0.7083, Recall: 0.4474, F1-score: 0.5484, AUC: 0.697076023391813
+# 3 KNN -> Accuracy: 0.6506, Precision: 0.6154, Recall: 0.6316, F1-score: 0.6234, AUC: 0.6546783625730994
+# 4 KNN -> Accuracy: 0.6627, Precision: 0.6923, Recall: 0.4737, F1-score: 0.5625, AUC: 0.6640350877192982
+# 5 KNN -> Accuracy: 0.6747, Precision: 0.6571, Recall: 0.6053, F1-score: 0.6301, AUC: 0.6856725146198831
+# 6 KNN -> Accuracy: 0.6747, Precision: 0.7037, Recall: 0.5000, F1-score: 0.5846, AUC: 0.6868421052631578
+# 7 KNN -> Accuracy: 0.6506, Precision: 0.6286, Recall: 0.5789, F1-score: 0.6027, AUC: 0.6874269005847954
