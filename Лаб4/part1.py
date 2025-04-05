@@ -128,6 +128,6 @@ for name, model in models.items():
     plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', label='ideal')
     plt.xlabel("Реальные значения")
     plt.ylabel("Предсказанные значения")
-    plt.title(f"{name} - Апроксимирующая кривая и данные")
+    plt.title(f"{name} - Апроксимирующая кривая и данные (price)")
     plt.legend()
     plt.show()

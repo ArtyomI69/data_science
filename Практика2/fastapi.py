@@ -1,5 +1,5 @@
 from typing import Union
-
+from fastapi import Query
 import numpy as np
 from fastapi import FastAPI
 import pandas as pd
@@ -28,7 +28,9 @@ def read_info():
 
 # Отображение всего датасета
 @app.get("/dataset")
-def read_dataset():
+def read_dataset(limit: Union[int, None] = Query(default=None, ge=1)):
+    if limit is not None:
+        return train.head(limit).to_dict(orient="records")
     return train.to_dict(orient="records")
 
 # Анализ числовых признаков
@@ -57,3 +59,5 @@ def read_model_results():
     selected_features = ["gravity", "ph"]
 
     return selected_features
+
+# Добавтиь один изменяемый параметр. На клиенте что то меняем

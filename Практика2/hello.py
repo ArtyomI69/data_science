@@ -14,6 +14,7 @@ from matplotlib.colors import ListedColormap
 from sklearn.metrics import roc_curve
 import requests
 
+
 # Структурируем страницу с вкладками
 st.title("Анализ данных и машинное обучение")
 
@@ -63,10 +64,25 @@ with tab_dataset:
     }
     for col, desc in description.items():
         st.write(f"**{col}**: {desc}")
-    
+
     # Отображение всего датасета
     st.write("### Полный датасет train.csv:")
-    train_response = requests.get("http://127.0.0.1:8000/dataset")
+
+    # Добавляем инпут для лимита
+    limit = st.number_input(
+        "Введите количество строк для отображения:",
+        min_value=1,
+        value=1,
+        step=1,
+        help="Введите число больше 0"
+    )
+
+    # Добавляем кнопку для применения лимита
+    if st.button("Применить лимит"):
+        train_response = requests.get(f"http://127.0.0.1:8000/dataset?limit={limit}")
+    else:
+        train_response = requests.get("http://127.0.0.1:8000/dataset")
+
     train_data = train_response.json()
     train_df = pd.DataFrame(train_data)
     st.dataframe(train_df)
