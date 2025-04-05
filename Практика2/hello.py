@@ -13,6 +13,9 @@ from collections import Counter
 from matplotlib.colors import ListedColormap
 from sklearn.metrics import roc_curve
 import requests
+import base64
+from PIL import Image
+from io import BytesIO
 
 
 # Структурируем страницу с вкладками
@@ -116,35 +119,13 @@ with tab_eda:
 with tab_results:
     st.header("Результаты моделей")
 
-    train_response = requests.get("http://127.0.0.1:8000/dataset")
-    train_data = train_response.json()
-    train_df = pd.DataFrame(train_data)
+    response = requests.get("http://localhost:8000/model-results")
+    data = response.json()
 
-    selected_features_response = requests.get("http://127.0.0.1:8000/selected_features")
-    selected_features = selected_features_response.json()
-
-    X_selected = train[selected_features].values
-    y_selected = train["target"].values
-
-    scaler = StandardScaler()
-    X_selected_scaled = scaler.fit_transform(X_selected)
-    X_train, X_val, y_train, y_val = train_test_split(X_selected_scaled, y_selected, test_size=0.2, random_state=42)
-
-    models = {
-        "KNN": KNeighborsClassifier(n_neighbors=5),
-        "Logistic Regression": LogisticRegression(),
-    }
-
-    results = {}
-    for name, model in models.items():
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_val)
-        acc = accuracy_score(y_val, y_pred)
-        prec = precision_score(y_val, y_pred)
-        rec = recall_score(y_val, y_pred)
-        f1 = f1_score(y_val, y_pred)
-        auc = roc_auc_score(y_val, model.predict_proba(X_val)[:, 1]) if hasattr(model, 'predict_proba') else "N/A"
-        results[name] = [acc, prec, rec, f1, auc]
+    results = data["results"]
+    X_selected_scaled = np.array(data["X_selected_scaled"])
+    y_selected = np.array(data["y_selected"])
+    selected_features = ["gravity", "ph"]
 
     results_df = pd.DataFrame(results, index=["Accuracy", "Precision", "Recall", "F1-score", "ROC-AUC"])
     st.dataframe(results_df)
@@ -157,26 +138,12 @@ with tab_visualization:
         Границы разделения отображаются для выбранных признаков, что позволяет лучше понять, как каждая модель классифицирует данные.
     """)
 
-    # Визуализация границ классов
-    def plot_decision_boundary(model, X, y, feature_names):
-        h = 0.02
-        x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-        y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-        xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100),
-                             np.linspace(y_min, y_max, 100))
-        Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
-        Z = Z.reshape(xx.shape)
-        cmap_light = ListedColormap(["#FFAAAA", "#AAFFAA"])
-        cmap_bold = ListedColormap(["#FF0000", "#00AA00"])
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.6)
-        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cmap_bold, edgecolor="k", s=20)
-        ax.set_xlabel(feature_names[0])
-        ax.set_ylabel(feature_names[1])
-        ax.set_title(f"Границы классов для {feature_names[0]} и {feature_names[1]}")
-        st.pyplot(fig)
-        plt.close()
+    # Получаем изображения от FastAPI
+    response = requests.get("http://localhost:8000/model-visualization")
+    images = response.json()
 
-    for name in models:
-        st.write(f"### Визуализация границ классов: {name}")
-        plot_decision_boundary(models[name], X_selected_scaled, y_selected, selected_features)
+    for model_name, image_base64 in images.items():
+        st.subheader(f"Границы классов: {model_name}")
+        img_bytes = base64.b64decode(image_base64)
+        image = Image.open(BytesIO(img_bytes))
+        st.image(image, use_container_width=True)
